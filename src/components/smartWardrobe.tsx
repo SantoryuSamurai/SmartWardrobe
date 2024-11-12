@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const SmartWardrobe = () => {
   // Add sections state
@@ -16,7 +17,7 @@ const SmartWardrobe = () => {
     { id: 3, name: 'Closet', items: [5, 6] },
   ]);
 
-  // Add wardrobe state with sample data
+  // Updated wardrobe state without seasonal tags
   const [wardrobe, setWardrobe] = useState([
     {
       id: 1,
@@ -26,7 +27,7 @@ const SmartWardrobe = () => {
       style: "Casual",
       location: "Drawer 1",
       imageUrl: "/api/placeholder/400/320",
-      tags: ["summer", "favorite"],
+      tags: ["favorite"],
       category: "casual"
     },
     {
@@ -37,7 +38,7 @@ const SmartWardrobe = () => {
       style: "Formal",
       location: "Closet",
       imageUrl: "/api/placeholder/400/320",
-      tags: ["formal", "winter"],
+      tags: [],
       category: "workwear"
     },
   ]);
@@ -51,6 +52,10 @@ const SmartWardrobe = () => {
     { type: 'assistant', text: "Hello! I'm your wardrobe assistant. How can I help you today?" }
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
+  // Add new state for form inputs
+  const [newItemLocation, setNewItemLocation] = useState('');
+  const [newItemName, setNewItemName] = useState('');
+  const [newItemCategory, setNewItemCategory] = useState('');
 
   const categories = [
     { id: 'all-items', name: 'All Items' },
@@ -98,6 +103,28 @@ const SmartWardrobe = () => {
     }
   };
 
+  const handleAddItem = () => {
+    const newItem = {
+      id: wardrobe.length + 1,
+      name: newItemName,
+      type: "Other", // Default value
+      color: "Unknown", // Default value
+      style: "Unknown", // Default value
+      category: newItemCategory,
+      location: newItemLocation,
+      imageUrl: "/api/placeholder/400/320",
+      tags: [],
+    };
+    
+    setWardrobe([...wardrobe, newItem]);
+    
+    // Reset form and close modal
+    setNewItemName('');
+    setNewItemCategory('');
+    setNewItemLocation('');
+    setShowUploadModal(false);
+  };
+
   const filteredItems = wardrobe.filter(item => {
     let tabFilter = true;
     
@@ -113,8 +140,7 @@ const SmartWardrobe = () => {
       !searchQuery || 
       item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.color.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase()));
+      item.color.toLowerCase().includes(searchQuery.toLowerCase());
 
     return tabFilter && searchFilter;
   });
@@ -133,15 +159,40 @@ const SmartWardrobe = () => {
               <p>Click to upload image</p>
             </label>
           </div>
-          <Input placeholder="Item Name" />
-          <select className="w-full p-2 border rounded">
-            <option>Select Category</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-          <Input placeholder="Wardrobe Location" />
-          <Button className="w-full" onClick={() => setShowUploadModal(false)}>
+          <Input 
+            placeholder="Item Name" 
+            value={newItemName}
+            onChange={(e) => setNewItemName(e.target.value)}
+          />
+          <Select value={newItemCategory} onValueChange={setNewItemCategory}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Category" />
+            </SelectTrigger>
+            <SelectContent>
+              {categories.slice(1).map(cat => (
+                <SelectItem key={cat.id} value={cat.id}>
+                  {cat.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={newItemLocation} onValueChange={setNewItemLocation}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select Location" />
+            </SelectTrigger>
+            <SelectContent>
+              {sections.map(section => (
+                <SelectItem key={section.id} value={section.name}>
+                  {section.name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button 
+            className="w-full" 
+            onClick={handleAddItem}
+            disabled={!newItemName || !newItemCategory || !newItemLocation}
+          >
             Add Item
           </Button>
         </div>
@@ -305,13 +356,6 @@ const SmartWardrobe = () => {
                   setSelectedSection(null);
                 }}
               >
-                {category.id === 'favorites' && (
-                  <Heart 
-                    className={`h-4 w-4 mr-2 ${
-                      activeTab === category.id ? 'fill-white' : ''
-                    }`} 
-                  />
-                )}
                 {category.name}
               </Button>
             ))}
@@ -357,13 +401,6 @@ const SmartWardrobe = () => {
                 <p className="text-sm text-gray-500 mb-2">
                   Location: {item.location}
                 </p>
-                <div className="flex flex-wrap gap-1">
-                  {item.tags.filter(tag => tag !== 'favorite').map((tag, index) => (
-                    <Badge key={index} variant="secondary" className="text-xs">
-                      {tag}
-                    </Badge>
-                  ))}
-                </div>
               </CardContent>
             </Card>
           ))}
