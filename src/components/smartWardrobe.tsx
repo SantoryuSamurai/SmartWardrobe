@@ -1,5 +1,5 @@
-// src/components/smartWardrobe.tsx
-'use client'
+"use client";
+
 import React, { useState } from 'react';
 import { PlusCircle, MessageCircle, Search, X, Heart, Edit2, Trash2 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
@@ -60,6 +60,10 @@ const SmartWardrobe = () => {
     { id: 'favorites', name: 'Favorites' }
   ];
 
+  const getItemCountInSection = (sectionName) => {
+    return wardrobe.filter(item => item.location === sectionName).length;
+  };
+
   const handleEditSection = (e, sectionId) => {
     e.stopPropagation();
     const section = sections.find(s => s.id === sectionId);
@@ -81,6 +85,17 @@ const SmartWardrobe = () => {
       }
       return item;
     }));
+  };
+
+  const sendChatMessage = () => {
+    if (currentMessage.trim()) {
+      setChatMessages([
+        ...chatMessages,
+        { type: 'user', text: currentMessage },
+        { type: 'assistant', text: "I'll help you find the perfect outfit based on your request!" }
+      ]);
+      setCurrentMessage('');
+    }
   };
 
   const filteredItems = wardrobe.filter(item => {
@@ -106,13 +121,29 @@ const SmartWardrobe = () => {
 
   const UploadModal = () => (
     <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Item</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Add your upload form here */}
-          <p>Upload form content goes here</p>
+          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+            <input type="file" className="hidden" id="file-upload" />
+            <label htmlFor="file-upload" className="cursor-pointer">
+              <PlusCircle className="w-12 h-12 mx-auto mb-2 text-gray-400" />
+              <p>Click to upload image</p>
+            </label>
+          </div>
+          <Input placeholder="Item Name" />
+          <select className="w-full p-2 border rounded">
+            <option>Select Category</option>
+            {categories.map(cat => (
+              <option key={cat.id} value={cat.id}>{cat.name}</option>
+            ))}
+          </select>
+          <Input placeholder="Wardrobe Location" />
+          <Button className="w-full" onClick={() => setShowUploadModal(false)}>
+            Add Item
+          </Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -120,50 +151,35 @@ const SmartWardrobe = () => {
 
   const ChatbotDialog = () => (
     <Dialog open={showChatbot} onOpenChange={setShowChatbot}>
-      <DialogContent>
+      <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Wardrobe Assistant</DialogTitle>
+          <DialogTitle>Style Assistant</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="h-[400px] overflow-y-auto space-y-4">
+        <div className="h-96 overflow-y-auto p-4 bg-gray-50 rounded-lg">
+          <div className="space-y-4">
             {chatMessages.map((message, index) => (
               <div
                 key={index}
-                className={`flex ${
-                  message.type === 'user' ? 'justify-end' : 'justify-start'
-                }`}
+                className={`p-3 rounded-lg ${
+                  message.type === 'assistant' 
+                    ? 'bg-blue-100' 
+                    : 'bg-gray-100 ml-auto'
+                } max-w-[80%]`}
               >
-                <div
-                  className={`max-w-[80%] p-3 rounded-lg ${
-                    message.type === 'user'
-                      ? 'bg-blue-500 text-white'
-                      : 'bg-gray-100'
-                  }`}
-                >
-                  {message.text}
-                </div>
+                {message.text}
               </div>
             ))}
           </div>
-          <div className="flex gap-2">
-            <Input
-              value={currentMessage}
-              onChange={(e) => setCurrentMessage(e.target.value)}
-              placeholder="Type your message..."
-              className="flex-1"
-            />
-            <Button onClick={() => {
-              if (currentMessage.trim()) {
-                setChatMessages([
-                  ...chatMessages,
-                  { type: 'user', text: currentMessage.trim() }
-                ]);
-                setCurrentMessage('');
-              }
-            }}>
-              Send
-            </Button>
-          </div>
+        </div>
+        <div className="flex gap-2 mt-4">
+          <Input 
+            placeholder="Type your message..." 
+            className="flex-1"
+            value={currentMessage}
+            onChange={(e) => setCurrentMessage(e.target.value)}
+            onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
+          />
+          <Button onClick={sendChatMessage}>Send</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -201,7 +217,12 @@ const SmartWardrobe = () => {
               </div>
             </div>
             <p className="text-xs text-gray-500">
-              {section.items.length} items
+              {getItemCountInSection(section.name) === 0 
+                ? 'Empty' 
+                : `${getItemCountInSection(section.name)} ${
+                    getItemCountInSection(section.name) === 1 ? 'item' : 'items'
+                  }`
+              }
             </p>
           </CardContent>
         </Card>
@@ -223,20 +244,22 @@ const SmartWardrobe = () => {
             >
               Smart Wardrobe
             </h1>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
-                size="icon"
+                size="sm"
                 onClick={() => setShowChatbot(true)}
               >
-                <MessageCircle className="h-5 w-5" />
+                <MessageCircle className="h-5 w-5 mr-2" />
+                Style Assistant
               </Button>
-              <Button
-                variant="ghost"
-                size="icon"
+              <Button 
+                variant="default" 
+                className="bg-gray-900 hover:bg-gray-800"
                 onClick={() => setShowUploadModal(true)}
               >
-                <PlusCircle className="h-5 w-5" />
+                <PlusCircle className="h-5 w-5 mr-2" />
+                Add Item
               </Button>
             </div>
           </div>
@@ -245,24 +268,27 @@ const SmartWardrobe = () => {
 
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="flex items-center space-x-4 mb-4">
-            <Search className="h-5 w-5 text-gray-400" />
-            <Input
-              type="text"
-              placeholder="Search items..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="flex-1"
-            />
-            {searchQuery && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => setSearchQuery('')}
-              >
-                <X className="h-5 w-5" />
-              </Button>
-            )}
+          <div className="mb-4 relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <Input
+                type="text"
+                placeholder="Search items..."
+                className="pl-10"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                  onClick={() => setSearchQuery('')}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
           </div>
 
           <div className="flex space-x-4 overflow-x-auto pb-2">
@@ -282,7 +308,7 @@ const SmartWardrobe = () => {
                 {category.id === 'favorites' && (
                   <Heart 
                     className={`h-4 w-4 mr-2 ${
-                      activeTab === category.id ? 'fill-current' : ''
+                      activeTab === category.id ? 'fill-white' : ''
                     }`} 
                   />
                 )}
@@ -315,7 +341,7 @@ const SmartWardrobe = () => {
                   <Heart 
                     className={`h-4 w-4 ${
                       item.tags.includes('favorite') 
-                        ? 'fill-red-500 text-red-500' 
+                        ? 'fill-gray-900 text-gray-900' 
                         : 'text-gray-500'
                     }`} 
                   />
