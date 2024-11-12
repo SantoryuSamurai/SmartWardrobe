@@ -9,7 +9,40 @@ import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 
 const SmartWardrobe = () => {
-  const [activeTab, setActiveTab] = useState('wardrobe');
+  // Add sections state
+  const [sections] = useState([
+    { id: 1, name: 'Drawer 1', items: [1, 2] },
+    { id: 2, name: 'Drawer 2', items: [3, 4] },
+    { id: 3, name: 'Closet', items: [5, 6] },
+  ]);
+
+  // Add wardrobe state with sample data
+  const [wardrobe, setWardrobe] = useState([
+    {
+      id: 1,
+      name: "Blue T-Shirt",
+      type: "T-Shirt",
+      color: "Blue",
+      style: "Casual",
+      location: "Drawer 1",
+      imageUrl: "/api/placeholder/400/320",
+      tags: ["summer", "favorite"],
+      category: "casual"
+    },
+    {
+      id: 2,
+      name: "Black Dress",
+      type: "Dress",
+      color: "Black",
+      style: "Formal",
+      location: "Closet",
+      imageUrl: "/api/placeholder/400/320",
+      tags: ["formal", "winter"],
+      category: "workwear"
+    },
+  ]);
+
+  const [activeTab, setActiveTab] = useState('all-items');
   const [searchQuery, setSearchQuery] = useState('');
   const [showChatbot, setShowChatbot] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
@@ -19,59 +52,24 @@ const SmartWardrobe = () => {
   ]);
   const [currentMessage, setCurrentMessage] = useState('');
 
-  // Sample wardrobe data
-  const [wardrobe, setWardrobe] = useState([
-    {
-      id: 1,
-      name: 'Blue Dress Shirt',
-      type: 'shirt',
-      color: 'blue',
-      style: 'formal',
-      location: 'Section A1',
-      category: 'workwear',
-      tags: ['favorite', 'work'],
-      imageUrl: '/api/placeholder/200/250'
-    },
-    {
-      id: 2,
-      name: 'Black Dress Pants',
-      type: 'pants',
-      color: 'black',
-      style: 'formal',
-      location: 'Section B2',
-      category: 'workwear',
-      tags: ['work'],
-      imageUrl: '/api/placeholder/200/250'
-    },
-    {
-      id: 3,
-      name: 'Red Party Dress',
-      type: 'dress',
-      color: 'red',
-      style: 'party',
-      location: 'Section C1',
-      category: 'partywear',
-      tags: ['party'],
-      imageUrl: '/api/placeholder/200/250'
-    }
-  ]);
-
-  const sections = [
-    { id: 'A1', name: 'Section A1', items: ['Blue Dress Shirt'] },
-    { id: 'A2', name: 'Section A2', items: [] },
-    { id: 'B1', name: 'Section B1', items: [] },
-    { id: 'B2', name: 'Section B2', items: ['Black Dress Pants'] },
-    { id: 'C1', name: 'Section C1', items: ['Red Party Dress'] },
-    { id: 'C2', name: 'Section C2', items: [] }
-  ];
-
   const categories = [
-    { id: 'wardrobe', name: 'Wardrobe' },
+    { id: 'all-items', name: 'All Items' },
     { id: 'workwear', name: 'Work Wear' },
     { id: 'partywear', name: 'Party Wear' },
     { id: 'casual', name: 'Casual' },
     { id: 'favorites', name: 'Favorites' }
   ];
+
+  const handleEditSection = (e, sectionId) => {
+    e.stopPropagation();
+    const section = sections.find(s => s.id === sectionId);
+    console.log('Editing section:', section);
+  };
+
+  const handleDeleteSection = (e, sectionId) => {
+    e.stopPropagation();
+    console.log('Deleting section:', sectionId);
+  };
 
   const toggleFavorite = (itemId) => {
     setWardrobe(wardrobe.map(item => {
@@ -85,24 +83,12 @@ const SmartWardrobe = () => {
     }));
   };
 
-  const sendChatMessage = () => {
-    if (currentMessage.trim()) {
-      setChatMessages([
-        ...chatMessages,
-        { type: 'user', text: currentMessage },
-        { type: 'assistant', text: "I'll help you find the perfect outfit based on your request!" }
-      ]);
-      setCurrentMessage('');
-    }
-  };
-
-  // Filtering logic
   const filteredItems = wardrobe.filter(item => {
     let tabFilter = true;
     
     if (activeTab === 'favorites') {
       tabFilter = item.tags.includes('favorite');
-    } else if (activeTab === 'wardrobe') {
+    } else if (activeTab === 'all-items') {
       tabFilter = selectedSection ? item.location === selectedSection.name : true;
     } else {
       tabFilter = item.category === activeTab;
@@ -120,29 +106,13 @@ const SmartWardrobe = () => {
 
   const UploadModal = () => (
     <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Add New Item</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-            <input type="file" className="hidden" id="file-upload" />
-            <label htmlFor="file-upload" className="cursor-pointer">
-              <PlusCircle className="w-12 h-12 mx-auto mb-2 text-gray-400" />
-              <p>Click to upload image</p>
-            </label>
-          </div>
-          <Input placeholder="Item Name" />
-          <select className="w-full p-2 border rounded">
-            <option>Select Category</option>
-            {categories.map(cat => (
-              <option key={cat.id} value={cat.id}>{cat.name}</option>
-            ))}
-          </select>
-          <Input placeholder="Wardrobe Location" />
-          <Button className="w-full" onClick={() => setShowUploadModal(false)}>
-            Add Item
-          </Button>
+          {/* Add your upload form here */}
+          <p>Upload form content goes here</p>
         </div>
       </DialogContent>
     </Dialog>
@@ -150,35 +120,50 @@ const SmartWardrobe = () => {
 
   const ChatbotDialog = () => (
     <Dialog open={showChatbot} onOpenChange={setShowChatbot}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
-          <DialogTitle>Style Assistant</DialogTitle>
+          <DialogTitle>Wardrobe Assistant</DialogTitle>
         </DialogHeader>
-        <div className="h-96 overflow-y-auto p-4 bg-gray-50 rounded-lg">
-          <div className="space-y-4">
+        <div className="space-y-4">
+          <div className="h-[400px] overflow-y-auto space-y-4">
             {chatMessages.map((message, index) => (
               <div
                 key={index}
-                className={`p-3 rounded-lg ${
-                  message.type === 'assistant' 
-                    ? 'bg-blue-100' 
-                    : 'bg-gray-100 ml-auto'
-                } max-w-[80%]`}
+                className={`flex ${
+                  message.type === 'user' ? 'justify-end' : 'justify-start'
+                }`}
               >
-                {message.text}
+                <div
+                  className={`max-w-[80%] p-3 rounded-lg ${
+                    message.type === 'user'
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-gray-100'
+                  }`}
+                >
+                  {message.text}
+                </div>
               </div>
             ))}
           </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <Input 
-            placeholder="Type your message..." 
-            className="flex-1"
-            value={currentMessage}
-            onChange={(e) => setCurrentMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-          />
-          <Button onClick={sendChatMessage}>Send</Button>
+          <div className="flex gap-2">
+            <Input
+              value={currentMessage}
+              onChange={(e) => setCurrentMessage(e.target.value)}
+              placeholder="Type your message..."
+              className="flex-1"
+            />
+            <Button onClick={() => {
+              if (currentMessage.trim()) {
+                setChatMessages([
+                  ...chatMessages,
+                  { type: 'user', text: currentMessage.trim() }
+                ]);
+                setCurrentMessage('');
+              }
+            }}>
+              Send
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
@@ -197,10 +182,20 @@ const SmartWardrobe = () => {
             <div className="flex justify-between items-center mb-2">
               <h3 className="font-medium">{section.name}</h3>
               <div className="flex gap-1">
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                  onClick={(e) => handleEditSection(e, section.id)}
+                >
                   <Edit2 className="h-3 w-3" />
                 </Button>
-                <Button variant="ghost" size="sm" className="h-6 w-6 p-0 text-red-500">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 text-red-500"
+                  onClick={(e) => handleDeleteSection(e, section.id)}
+                >
                   <Trash2 className="h-3 w-3" />
                 </Button>
               </div>
@@ -216,70 +211,81 @@ const SmartWardrobe = () => {
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Navigation */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16 items-center">
-            <h1 className="text-xl font-bold">Smart Wardrobe</h1>
-            <div className="flex items-center gap-4">
+            <h1 
+              className="text-xl font-bold cursor-pointer" 
+              onClick={() => {
+                setActiveTab('all-items');
+                setSelectedSection(null);
+              }}
+            >
+              Smart Wardrobe
+            </h1>
+            <div className="flex items-center space-x-4">
               <Button
                 variant="ghost"
-                size="sm"
+                size="icon"
                 onClick={() => setShowChatbot(true)}
               >
-                <MessageCircle className="h-5 w-5 mr-2" />
-                Style Assistant
+                <MessageCircle className="h-5 w-5" />
               </Button>
-              <Button 
-                variant="default" 
-                className="bg-gray-900 hover:bg-gray-800"
+              <Button
+                variant="ghost"
+                size="icon"
                 onClick={() => setShowUploadModal(true)}
               >
-                <PlusCircle className="h-5 w-5 mr-2" />
-                Add Item
+                <PlusCircle className="h-5 w-5" />
               </Button>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Search and Categories */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="mb-4 relative">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search items..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                  onClick={() => setSearchQuery('')}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
+          <div className="flex items-center space-x-4 mb-4">
+            <Search className="h-5 w-5 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search items..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="flex-1"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setSearchQuery('')}
+              >
+                <X className="h-5 w-5" />
+              </Button>
+            )}
           </div>
+
           <div className="flex space-x-4 overflow-x-auto pb-2">
             {categories.map(category => (
               <Button
                 key={category.id}
                 variant={activeTab === category.id ? "default" : "ghost"}
-                className="rounded-full hover:bg-gray-100"
+                className={`rounded-full transition-colors duration-200 
+                  ${activeTab === category.id 
+                    ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                    : 'hover:bg-gray-100'}`}
                 onClick={() => {
                   setActiveTab(category.id);
                   setSelectedSection(null);
                 }}
               >
-                {category.id === 'favorites' && <Heart className="h-4 w-4 mr-2" />}
+                {category.id === 'favorites' && (
+                  <Heart 
+                    className={`h-4 w-4 mr-2 ${
+                      activeTab === category.id ? 'fill-current' : ''
+                    }`} 
+                  />
+                )}
                 {category.name}
               </Button>
             ))}
@@ -287,12 +293,9 @@ const SmartWardrobe = () => {
         </div>
       </div>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {/* Section Manager for Wardrobe Tab */}
-        {activeTab === 'wardrobe' && <SectionManager />}
+        {activeTab === 'all-items' && <SectionManager />}
 
-        {/* Wardrobe Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredItems.map(item => (
             <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -305,12 +308,17 @@ const SmartWardrobe = () => {
                 <Button
                   variant="secondary"
                   size="icon"
-                  className={`absolute top-2 right-2 h-8 w-8 rounded-full ${
-                    item.tags.includes('favorite') ? 'text-red-500' : ''
-                  }`}
+                  className={`absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 
+                    hover:bg-white/90 transition-colors`}
                   onClick={() => toggleFavorite(item.id)}
                 >
-                  <Heart className="h-4 w-4" />
+                  <Heart 
+                    className={`h-4 w-4 ${
+                      item.tags.includes('favorite') 
+                        ? 'fill-red-500 text-red-500' 
+                        : 'text-gray-500'
+                    }`} 
+                  />
                 </Button>
               </div>
               <CardContent className="p-4">
@@ -336,7 +344,6 @@ const SmartWardrobe = () => {
         </div>
       </div>
 
-      {/* Modals */}
       <UploadModal />
       <ChatbotDialog />
     </div>
