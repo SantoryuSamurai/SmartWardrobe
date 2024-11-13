@@ -26,7 +26,7 @@ const SmartWardrobe = () => {
       color: "Blue",
       style: "Casual",
       location: "Drawer 1",
-      imageUrl: "/api/placeholder/400/320",
+      imageUrl: "https://placehold.co/400x320",
       tags: ["favorite"],
       category: "casual"
     },
@@ -37,7 +37,7 @@ const SmartWardrobe = () => {
       color: "Black",
       style: "Formal",
       location: "Closet",
-      imageUrl: "/api/placeholder/400/320",
+      imageUrl: "https://placehold.co/400x320",
       tags: [],
       category: "workwear"
     },
