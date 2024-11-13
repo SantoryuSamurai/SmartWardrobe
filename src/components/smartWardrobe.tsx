@@ -6,7 +6,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
 const SmartWardrobe = () => {
@@ -150,6 +150,9 @@ const SmartWardrobe = () => {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Add New Item</DialogTitle>
+          <DialogDescription>
+            {/* Upload a new item to your wardrobe. Fill in all the required details below. */}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
           <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
