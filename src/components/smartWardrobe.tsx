@@ -45,13 +45,8 @@ const SmartWardrobe = () => {
 
   const [activeTab, setActiveTab] = useState('all-items');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showChatbot, setShowChatbot] = useState(false);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedSection, setSelectedSection] = useState(null);
-  const [chatMessages, setChatMessages] = useState([
-    { type: 'assistant', text: "Hello! I'm your wardrobe assistant. How can I help you today?" }
-  ]);
-  const [currentMessage, setCurrentMessage] = useState('');
   // Add new state for form inputs
   const [newItemLocation, setNewItemLocation] = useState('');
   const [newItemName, setNewItemName] = useState('');
@@ -90,17 +85,6 @@ const SmartWardrobe = () => {
       }
       return item;
     }));
-  };
-
-  const sendChatMessage = () => {
-    if (currentMessage.trim()) {
-      setChatMessages([
-        ...chatMessages,
-        { type: 'user', text: currentMessage },
-        { type: 'assistant', text: "I'll help you find the perfect outfit based on your request!" }
-      ]);
-      setCurrentMessage('');
-    }
   };
 
   const handleAddItem = () => {
@@ -144,6 +128,10 @@ const SmartWardrobe = () => {
 
     return tabFilter && searchFilter;
   });
+
+  const handleStyleAssistantClick = () => {
+    window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
+  };
 
   const UploadModal = () => (
     <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
@@ -198,42 +186,6 @@ const SmartWardrobe = () => {
           >
             Add Item
           </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
-  const ChatbotDialog = () => (
-    <Dialog open={showChatbot} onOpenChange={setShowChatbot}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Style Assistant</DialogTitle>
-        </DialogHeader>
-        <div className="h-96 overflow-y-auto p-4 bg-gray-50 rounded-lg">
-          <div className="space-y-4">
-            {chatMessages.map((message, index) => (
-              <div
-                key={index}
-                className={`p-3 rounded-lg ${
-                  message.type === 'assistant' 
-                    ? 'bg-blue-100' 
-                    : 'bg-gray-100 ml-auto'
-                } max-w-[80%]`}
-              >
-                {message.text}
-              </div>
-            ))}
-          </div>
-        </div>
-        <div className="flex gap-2 mt-4">
-          <Input 
-            placeholder="Type your message..." 
-            className="flex-1"
-            value={currentMessage}
-            onChange={(e) => setCurrentMessage(e.target.value)}
-            onKeyPress={(e) => e.key === 'Enter' && sendChatMessage()}
-          />
-          <Button onClick={sendChatMessage}>Send</Button>
         </div>
       </DialogContent>
     </Dialog>
@@ -302,7 +254,7 @@ const SmartWardrobe = () => {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => setShowChatbot(true)}
+                onClick={handleStyleAssistantClick}
               >
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Style Assistant
@@ -411,7 +363,6 @@ const SmartWardrobe = () => {
       </div>
 
       <UploadModal />
-      <ChatbotDialog />
     </div>
   );
 };
