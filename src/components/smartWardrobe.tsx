@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
-import { createClient } from '@supabase/supabase-js';
+import supabase from "../config/supabaseClient"
 import { 
   PlusCircle, 
   Upload, 
@@ -36,10 +36,10 @@ import { Toaster } from '@/components/ui/toaster';
 import { toast } from "@/components/ui/use-toast";
 
 // Supabase configuration
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!, 
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+// const supabase = createClient(
+//   process.env.NEXT_PUBLIC_SUPABASE_URL!, 
+//   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+// );
 
 // Interfaces (keep the existing interfaces)
 interface Section {
@@ -54,6 +54,8 @@ interface WardrobeItem {
   location: string;
   imageUrl: string;
   category: string;
+  tags: string[];
+ 
 }
 
 const AddItemDialog: React.FC<{ 
@@ -171,11 +173,11 @@ const AddItemDialog: React.FC<{
 
       // Prepare item data
       const newItem: WardrobeItem = {
-        id: Date.now(), // Temporary ID
         name: itemName,
         location: location,
         imageUrl: imageUrl,
-        category: 'all-items'
+        category: 'all-items',
+        tags: [] as string[]
       };
 
       // Insert into Supabase
@@ -460,18 +462,16 @@ const SmartWardrobe = () => {
     let tabFilter = true;
     
     if (activeTab === 'favorites') {
-      tabFilter = item.tags.includes('favorite');
-    } else if (activeTab === 'all-items') {
+      tabFilter = item.tags?.includes('favorite') || false;
+        } else if (activeTab === 'all-items') {
       tabFilter = selectedSection ? item.location === selectedSection.name : true;
     } else {
       tabFilter = item.category === activeTab;
     }
 
     const searchFilter = 
-      !searchQuery || 
-      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.type.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.color.toLowerCase().includes(searchQuery.toLowerCase());
+    !searchQuery || 
+    (item.name ?? '').toLowerCase().includes((searchQuery ?? '').toLowerCase());
 
     return tabFilter && searchFilter;
   });
@@ -602,13 +602,7 @@ const SmartWardrobe = () => {
       </div>
   
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {isAddingItem && (
-          <AddItemForm 
-            sections={sections}
-            onItemAdded={handleItemAdded}
-          />
-        )}
-  
+        
         {activeTab === 'all-items' && !isAddingItem && <SectionManager />}
   
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -638,11 +632,6 @@ const SmartWardrobe = () => {
               </div>
               <CardContent className="p-4">
                 <h3 className="font-medium mb-2">{item.name}</h3>
-                <div className="flex flex-wrap gap-2 mb-2">
-                  <Badge variant="outline">{item.type}</Badge>
-                  <Badge variant="outline">{item.color}</Badge>
-                  <Badge variant="outline">{item.style}</Badge>
-                </div>
                 <p className="text-sm text-gray-500 mb-2">
                   Location: {item.location}
                 </p>
