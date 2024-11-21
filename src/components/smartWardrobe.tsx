@@ -1,15 +1,38 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { createClient } from '@supabase/supabase-js';
-import { PlusCircle, MessageCircle, Search, X, Heart, Edit2, Trash2, ImagePlus } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
+import { 
+  PlusCircle, 
+  Upload, 
+  X, 
+  MessageCircle, 
+  Search, 
+  Edit2, 
+  Trash2, 
+  Heart 
+} from 'lucide-react';
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Dialog, DialogContent, DialogHeader, DialogDescription, DialogTitle } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Toaster } from "@/components/ui/toaster";
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from "@/components/ui/select";
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter,
+  DialogTrigger 
+} from "@/components/ui/dialog";
+import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from "@/components/ui/badge";
+import { Toaster } from '@/components/ui/toaster';
 import { toast } from "@/components/ui/use-toast";
 
 // Supabase configuration
@@ -18,24 +41,313 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
-// Types
+// Interfaces (keep the existing interfaces)
 interface Section {
   id: number;
   name: string;
-  items: number[];
+  items?: number[];
 }
 
 interface WardrobeItem {
   id: number;
   name: string;
-  type: string;
-  color: string;
-  style: string;
   location: string;
   imageUrl: string;
-  tags: string[];
   category: string;
 }
+
+const AddItemDialog: React.FC<{ 
+  sections: Section[]; 
+  onItemAdded: (item: WardrobeItem) => void 
+}> = ({ sections, onItemAdded }) => {
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [itemName, setItemName] = useState('');
+  const [location, setLocation] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Handle image upload
+  const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      // Validate file type and size
+      const validTypes = ['image/jpeg', 'image/png', 'image/gif'];
+      const maxSize = 5 * 1024 * 1024; // 5MB
+
+      if (!validTypes.includes(file.type)) {
+        toast({
+          title: "Invalid File Type",
+          description: "Please upload a JPEG, PNG, or GIF image.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      if (file.size > maxSize) {
+        toast({
+          title: "File Too Large",
+          description: "Image must be smaller than 5MB.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setImageFile(file);
+      setImagePreview(URL.createObjectURL(file));
+    }
+  };
+
+  // Upload image to Supabase storage
+  const uploadImageToStorage = async (): Promise<string | null> => {
+    if (!imageFile) return null;
+
+    try {
+      const fileExt = imageFile.name.split('.').pop();
+      const fileName = `${Date.now()}.${fileExt}`;
+      const filePath = `wardrobe-items/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('wardrobe-images')
+        .upload(filePath, imageFile);
+
+      if (uploadError) {
+        throw uploadError;
+      }
+
+      // Get public URL
+      const { data: { publicUrl }, error: urlError } = supabase.storage
+        .from('wardrobe-images')
+        .getPublicUrl(filePath);
+
+      if (urlError) {
+        throw urlError;
+      }
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Image upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: "Could not upload image. Please try again.",
+        variant: "destructive"
+      });
+      return null;
+    }
+  };
+
+  // Reset form
+  const resetForm = () => {
+    setItemName('');
+    setLocation('');
+    setImageFile(null);
+    setImagePreview(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle form submission
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate form
+    if (!itemName || !location || !imageFile) {
+      toast({
+        title: "Incomplete Form",
+        description: "Please fill in all fields and upload an image.",
+        variant: "destructive"
+      });
+      return;
+    }
+
+    try {
+      // Upload image
+      const imageUrl = await uploadImageToStorage();
+      
+      if (!imageUrl) {
+        return; // Image upload failed
+      }
+
+      // Prepare item data
+      const newItem: WardrobeItem = {
+        id: Date.now(), // Temporary ID
+        name: itemName,
+        location: location,
+        imageUrl: imageUrl,
+        category: 'all-items'
+      };
+
+      // Insert into Supabase
+      const { data, error } = await supabase
+        .from('wardrobe_items')
+        .insert([newItem])
+        .select();
+
+      if (error) {
+        throw error;
+      }
+
+      // Use the returned ID from Supabase
+      const insertedItem = data[0];
+
+      // Notify parent component
+      onItemAdded(insertedItem);
+
+      // Reset form and close dialog
+      resetForm();
+      setIsDialogOpen(false);
+
+      // Show success toast
+      toast({
+        title: "Item Added",
+        description: "Your wardrobe item has been successfully added.",
+        duration: 3000
+      });
+
+    } catch (error) {
+      console.error('Add item error:', error);
+      toast({
+        title: "Add Item Failed",
+        description: "Could not add item to wardrobe. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  return (
+    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+      <DialogTrigger asChild>
+        <Button 
+          variant="default" 
+          className="bg-gray-900 hover:bg-gray-800"
+        >
+          <PlusCircle className="h-5 w-5 mr-2" />
+          Add Item
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-[600px]">
+        <DialogHeader>
+          <DialogTitle>Add New Wardrobe Item</DialogTitle>
+          <DialogDescription>
+            Fill in the details of your new wardrobe item.
+          </DialogDescription>
+        </DialogHeader>
+        
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Image Upload Section */}
+            <div>
+              <div 
+                className={`border-2 border-dashed rounded-lg p-6 text-center 
+                  ${imagePreview ? 'border-gray-300' : 'border-gray-200 hover:border-gray-300'}`}
+              >
+                <input 
+                  type="file" 
+                  ref={fileInputRef}
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleImageUpload}
+                  className="hidden"
+                  id="imageUpload"
+                />
+                {imagePreview ? (
+                  <div className="relative">
+                    <img 
+                      src={imagePreview} 
+                      alt="Preview" 
+                      className="mx-auto max-h-64 object-cover rounded-lg"
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-2 right-2 h-8 w-8"
+                      onClick={() => {
+                        setImageFile(null);
+                        setImagePreview(null);
+                        if (fileInputRef.current) {
+                          fileInputRef.current.value = '';
+                        }
+                      }}
+                    >
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ) : (
+                  <label 
+                    htmlFor="imageUpload" 
+                    className="cursor-pointer flex flex-col items-center"
+                  >
+                    <Upload className="h-12 w-12 text-gray-400 mb-4" />
+                    <p className="text-gray-600">
+                      Click to upload item image
+                    </p>
+                    <p className="text-xs text-gray-500 mt-2">
+                      PNG, JPG, or GIF (max 5MB)
+                    </p>
+                  </label>
+                )}
+              </div>
+            </div>
+
+            {/* Item Details Section */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Item Name
+                </label>
+                <Input 
+                  type="text" 
+                  placeholder="Enter item name" 
+                  value={itemName}
+                  onChange={(e) => setItemName(e.target.value)}
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Location
+                </label>
+                <Select 
+                  value={location}
+                  onValueChange={setLocation}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select storage location" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map(section => (
+                      <SelectItem 
+                        key={section.id} 
+                        value={section.name}
+                      >
+                        {section.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setIsDialogOpen(false)}
+            >
+              Cancel
+            </Button>
+            <Button type="submit">
+              <PlusCircle className="h-5 w-5 mr-2" />
+              Add to Wardrobe
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+};
 
 const SmartWardrobe = () => {
   // Sections State
@@ -51,22 +363,8 @@ const SmartWardrobe = () => {
   // UI States
   const [activeTab, setActiveTab] = useState('all-items');
   const [searchQuery, setSearchQuery] = useState('');
-  const [showUploadModal, setShowUploadModal] = useState(false);
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-
-  // New Item State
-  const [newItem, setNewItem] = useState({
-    name: '',
-    type: '',
-    color: '',
-    style: '',
-    category: '',
-    location: '',
-    tags: [] as string[]
-  });
+  const [isAddingItem, setIsAddingItem] = useState(false);
 
   // Categories
   const categories = [
@@ -104,105 +402,20 @@ const SmartWardrobe = () => {
     }
   };
 
-  // Handle image file selection
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setImageFile(file);
-      setImagePreview(URL.createObjectURL(file));
-    }
+  const handleStyleAssistantClick = () => {
+    window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
   };
 
-  // Upload image to Supabase storage
-  const uploadImageToSupabase = async () => {
-    if (!imageFile) return null;
-
-    try {
-      const fileExt = imageFile.name.split('.').pop();
-      const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `wardrobe/${fileName}`;
-
-      const { data, error } = await supabase.storage
-        .from('wardrobe-images')
-        .upload(filePath, imageFile);
-
-      if (error) {
-        toast({
-          title: "Upload Failed",
-          description: "Could not upload image.",
-          variant: "destructive"
-        });
-        return null;
-      }
-
-      // Get public URL
-      const { data: { publicUrl } } = supabase.storage
-        .from('wardrobe-images')
-        .getPublicUrl(filePath);
-
-      return publicUrl;
-    } catch (error) {
-      console.error('Image upload error:', error);
-      return null;
-    }
+  const handleAddItemClick = () => {
+    setIsAddingItem(true);
+    setActiveTab('all-items');
+    setSelectedSection(null);
+    window.scrollTo(0, 0);
   };
 
-  // Handle complete item addition
-  const handleAddItem = async () => {
-    setIsUploading(true);
-
-    try {
-      // Upload image first
-      const imageUrl = await uploadImageToSupabase();
-
-      // Prepare item for database
-      const newWardrobeItem = {
-        ...newItem,
-        imageUrl: imageUrl || "/api/placeholder/400/320",
-        tags: newItem.tags
-      };
-
-      // Add to Supabase
-      const { data, error } = await supabase
-        .from('wardrobe_items')
-        .insert(newWardrobeItem)
-        .select();
-
-      if (error) {
-        toast({
-          title: "Item Addition Failed",
-          description: "Could not add item to wardrobe.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Update local state
-      setWardrobe([...wardrobe, data[0]]);
-
-      // Reset form
-      resetForm();
-    } catch (error) {
-      console.error('Item addition error:', error);
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
-  // Reset form to initial state
-  const resetForm = () => {
-    setNewItem({
-      name: '',
-      type: '',
-      color: '',
-      style: '',
-      category: '',
-      location: '',
-      tags: []
-    });
-    setImageFile(null);
-    setImagePreview(null);
-    setShowUploadModal(false);
+  const handleItemAdded = (newItem: WardrobeItem) => {
+    // Update wardrobe items state
+    setWardrobe(prevItems => [...prevItems, newItem]);
   };
 
   // Utility Functions
@@ -240,10 +453,6 @@ const SmartWardrobe = () => {
     } catch (error) {
       console.error('Toggling favorite error:', error);
     }
-  };
-
-  const handleStyleAssistantClick = () => {
-    window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
   };
 
   // Filtering Logic
@@ -311,118 +520,9 @@ const SmartWardrobe = () => {
     </div>
   );
 
-  // Upload Modal Component
-  const UploadModal = () => (
-    <Dialog open={showUploadModal} onOpenChange={setShowUploadModal}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle>Add New Wardrobe Item</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4">
-          {/* Image Upload Section */}
-          <div 
-            className={`border-2 ${
-              imagePreview 
-                ? 'border-solid border-green-500' 
-                : 'border-dashed border-gray-300'
-            } rounded-lg p-4 text-center relative`}
-          >
-            {imagePreview ? (
-              <img 
-                src={imagePreview} 
-                alt="Preview" 
-                className="w-full h-48 object-cover rounded-lg"
-              />
-            ) : (
-              <div className="flex flex-col items-center justify-center h-48">
-                <ImagePlus className="w-12 h-12 mb-2 text-gray-400" />
-                <p className="text-gray-500">No image selected</p>
-              </div>
-            )}
-            <input 
-              type="file" 
-              accept="image/*"
-              className="absolute inset-0 opacity-0 cursor-pointer" 
-              onChange={handleImageSelect}
-            />
-          </div>
-
-          {/* Detailed Item Input Fields */}
-          <div className="grid grid-cols-2 gap-4">
-            <Input 
-              placeholder="Item Name" 
-              value={newItem.name}
-              onChange={(e) => setNewItem({...newItem, name: e.target.value})}
-            />
-            <Input 
-              placeholder="Type (e.g., T-Shirt)" 
-              value={newItem.type}
-              onChange={(e) => setNewItem({...newItem, type: e.target.value})}
-            />
-            <Input 
-              placeholder="Color" 
-              value={newItem.color}
-              onChange={(e) => setNewItem({...newItem, color: e.target.value})}
-            />
-            <Input 
-              placeholder="Style (e.g., Casual)" 
-              value={newItem.style}
-              onChange={(e) => setNewItem({...newItem, style: e.target.value})}
-            />
-          </div>
-
-          {/* Category and Location Selects */}
-          <Select 
-            value={newItem.category} 
-            onValueChange={(value) => setNewItem({...newItem, category: value})}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Category" />
-            </SelectTrigger>
-            <SelectContent>
-              {categories.slice(1).map(cat => (
-                <SelectItem key={cat.id} value={cat.id}>
-                  {cat.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Select 
-            value={newItem.location} 
-            onValueChange={(value) => setNewItem({...newItem, location: value})}
-          >
-            <SelectTrigger>
-              <SelectValue placeholder="Select Location" />
-            </SelectTrigger>
-            <SelectContent>
-              {sections.map(section => (
-                <SelectItem key={section.id} value={section.name}>
-                  {section.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <Button 
-            className="w-full" 
-            onClick={handleAddItem}
-            disabled={
-              !newItem.name || 
-              !newItem.category || 
-              !newItem.location || 
-              !imageFile
-            }
-          >
-            {isUploading ? 'Adding...' : 'Add Item'}
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Header */}
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between h-16 items-center">
@@ -444,19 +544,17 @@ const SmartWardrobe = () => {
                 <MessageCircle className="h-5 w-5 mr-2" />
                 Style Assistant
               </Button>
-              <Button 
-                variant="default" 
-                className="bg-gray-900 hover:bg-gray-800"
-                onClick={() => setShowUploadModal(true)}
-              >
-                <PlusCircle className="h-5 w-5 mr-2" />
-                Add Item
-              </Button>
+              
+              {/* Replace previous Add Item button with new Dialog Trigger */}
+              <AddItemDialog 
+                sections={sections} 
+                onItemAdded={handleItemAdded} 
+              />
             </div>
           </div>
         </div>
       </div>
-
+  
       <div className="bg-white border-b">
         <div className="max-w-7xl mx-auto px-4 py-4">
           <div className="mb-4 relative">
@@ -481,7 +579,7 @@ const SmartWardrobe = () => {
               )}
             </div>
           </div>
-
+  
           <div className="flex space-x-4 overflow-x-auto pb-2">
             {categories.map(category => (
               <Button
@@ -502,10 +600,17 @@ const SmartWardrobe = () => {
           </div>
         </div>
       </div>
-
+  
       <div className="max-w-7xl mx-auto px-4 py-8">
-        {activeTab === 'all-items' && <SectionManager />}
-
+        {isAddingItem && (
+          <AddItemForm 
+            sections={sections}
+            onItemAdded={handleItemAdded}
+          />
+        )}
+  
+        {activeTab === 'all-items' && !isAddingItem && <SectionManager />}
+  
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {filteredItems.map(item => (
             <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
@@ -546,8 +651,7 @@ const SmartWardrobe = () => {
           ))}
         </div>
       </div>
-
-      <UploadModal />
+      <Toaster />
     </div>
   );
 };
