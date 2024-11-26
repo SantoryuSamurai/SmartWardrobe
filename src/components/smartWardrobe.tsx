@@ -51,21 +51,6 @@ interface WardrobeItem {
   tags: string[];
 }
 
-interface Section {
-  id: number;
-  name: string;
-  items?: number[];
-}
-
-interface WardrobeItem {
-  id: number;
-  name: string;
-  location: string;
-  imageUrl: string;
-  category: string;
-  tags: string[];
-}
-
 const SmartWardrobe = () => {
   // Existing states...
   const [sections, setSections] = useState<Section[]>([]);
@@ -86,7 +71,6 @@ const SmartWardrobe = () => {
   const [categories, setCategories] = useState([
     { id: 'all-items', name: 'All Items' },
     { id: 'favorites', name: 'Favorites' },
-    // Add more categories as needed
   ]);
 
   // Fetch sections on component mount
@@ -105,7 +89,7 @@ const SmartWardrobe = () => {
       const { data, error } = await supabase
         .from('sections')
         .select('*')
-        .order('name', { ascending: true }); // Order sections by name in ascending order
+        .order('name', { ascending: true }); 
   
       if (error) {
         toast({
@@ -482,7 +466,7 @@ const SmartWardrobe = () => {
                 >
                   <DialogTrigger asChild>
                     <Button 
-                      variant="ghost" 
+                      variant="ghost"
                       size="sm" 
                       className="h-6 w-6 p-0 text-red-500"
                       onClick={(e) => {
