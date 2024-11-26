@@ -35,13 +35,6 @@ import { Badge } from "@/components/ui/badge";
 import { Toaster } from '@/components/ui/toaster';
 import { toast } from "@/components/ui/use-toast";
 
-// Supabase configuration
-// const supabase = createClient(
-//   process.env.NEXT_PUBLIC_SUPABASE_URL!, 
-//   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-// );
-
-// Interfaces (keep the existing interfaces)
 interface Section {
   id: number;
   name: string;
@@ -55,8 +48,195 @@ interface WardrobeItem {
   imageUrl: string;
   category: string;
   tags: string[];
- 
 }
+
+const SmartWardrobe = () => {
+  // Sections State
+  const [sections, setSections] = useState<Section[]>([]);
+
+  // Wardrobe State
+  const [wardrobe, setWardrobe] = useState<WardrobeItem[]>([]);
+
+  // UI States
+  const [activeTab, setActiveTab] = useState('all-items');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedSection, setSelectedSection] = useState<Section | null>(null);
+  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [categories, setCategories] = useState([
+    { id: 'all-items', name: 'All Items' },
+    { id: 'favorites', name: 'Favorites' },
+    // Add more categories as needed
+  ]);
+
+  // Fetch sections on component mount
+  useEffect(() => {
+    fetchSections();
+  }, []);
+
+  // Fetch wardrobe items on component mount
+  useEffect(() => {
+    fetchWardrobeItems();
+  }, []);
+
+  // Fetch Sections from Supabase
+  const fetchSections = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('sections')
+        .select('*');
+
+      if (error) {
+        toast({
+          title: "Fetch Failed",
+          description: "Could not load sections.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setSections(data || []);
+    } catch (error) {
+      console.error('Fetching sections error:', error);
+    }
+  };
+
+  // Fetch Wardrobe Items from Supabase
+  const fetchWardrobeItems = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('wardrobe_items')
+        .select('*');
+
+      if (error) {
+        toast({
+          title: "Fetch Failed",
+          description: "Could not load wardrobe items.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setWardrobe(data || []);
+    } catch (error) {
+      console.error('Fetching wardrobe items error:', error);
+    }
+  };
+
+  const handleStyleAssistantClick = () => {
+    window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
+  };
+
+  const handleAddItemClick = () => {
+    setIsAddingItem(true);
+    setActiveTab('all-items');
+    setSelectedSection(null);
+    window.scrollTo(0, 0);
+  };
+
+  const handleItemAdded = (newItem: WardrobeItem) => {
+    // Update wardrobe items state
+    setWardrobe(prevItems => [...prevItems, newItem]);
+  };
+
+  // Utility Functions
+  const getItemCountInSection = (sectionName: string) => {
+    return wardrobe.filter(item => item.location === sectionName).length;
+  };
+
+  const toggleFavorite = async (itemId: number) => {
+    const item = wardrobe.find(i => i.id === itemId);
+    if (!item) return;
+
+    const newTags = item.tags.includes('favorite')
+      ? item.tags.filter(tag => tag !== 'favorite')
+      : [...item.tags, 'favorite'];
+
+    try {
+      const { error } = await supabase
+        .from('wardrobe_items')
+        .update({ tags: newTags })
+        .eq('id', itemId);
+
+      if (error) {
+        toast({
+          title: "Update Failed",
+          description: "Could not update favorite status.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Update local state
+      setWardrobe(wardrobe.map(i => 
+        i.id === itemId ? { ...i, tags: newTags } : i
+      ));
+    } catch (error) {
+      console.error('Toggling favorite error:', error);
+    }
+  };
+
+  // Filtering Logic
+  const filteredItems = wardrobe.filter(item => {
+    let tabFilter = true;
+    
+    if (activeTab === 'favorites') {
+      tabFilter = item.tags?.includes('favorite') || false;
+    } else if (activeTab === 'all-items') {
+      tabFilter = selectedSection ? item.location === selectedSection.name : true;
+    } else {
+      tabFilter = item.category === activeTab;
+    }
+
+    const searchFilter = 
+    !searchQuery || 
+    (item.name ?? '').toLowerCase().includes((searchQuery ?? '').toLowerCase());
+
+    return tabFilter && searchFilter;
+  });
+
+  // Section Manager Component
+  const SectionManager = () => (
+    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      {sections.map((section) => (
+        <Card 
+          key={section.id}
+          className={`cursor-pointer hover:shadow-md transition-shadow
+            ${selectedSection?.id === section.id ? 'ring-2 ring-blue-500' : ''}`}
+          onClick={() => setSelectedSection(selectedSection?.id === section.id ? null : section)}
+        >
+          <CardContent className="p-4">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="font-medium">{section.name}</h3>
+              <div className="flex gap-1">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0"
+                >
+                  <Edit2 className="h-3 w-3" />
+                </Button>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 w-6 p-0 text-red-500"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500">
+              {getItemCountInSection(section.name) === 0 
+                ? 'Empty' 
+                : `${getItemCountInSection(section.name)} ${
+                    getItemCountInSection(section.name) === 1 ? 'item' : 'items'
+                  }`
+              }
+            </p>
+          </CardContent>
+        </Card>
+      ))}
+    </div>
+  );
 
 const AddItemDialog: React.FC<{ 
   sections: Section[]; 
@@ -345,298 +525,128 @@ const AddItemDialog: React.FC<{
   );
 };
 
-const SmartWardrobe = () => {
-  // Sections State
-  const [sections, setSections] = useState<Section[]>([
-    { id: 1, name: 'Drawer 1', items: [1, 2] },
-    { id: 2, name: 'Drawer 2', items: [3, 4] },
-    { id: 3, name: 'Closet', items: [5, 6] },
-  ]);
-
-  // Wardrobe State
-  const [wardrobe, setWardrobe] = useState<WardrobeItem[]>([]);
-
-  // UI States
-  const [activeTab, setActiveTab] = useState('all-items');
-  const [searchQuery, setSearchQuery] = useState('');
-  const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-  const [isAddingItem, setIsAddingItem] = useState(false);
-
-  // Categories
-  const categories = [
-    { id: 'all-items', name: 'All Items' },
-    { id: 'workwear', name: 'Work Wear' },
-    { id: 'partywear', name: 'Party Wear' },
-    { id: 'casual', name: 'Casual' },
-    { id: 'favorites', name: 'Favorites' }
-  ];
-
-  // Fetch wardrobe items on component mount
-  useEffect(() => {
-    fetchWardrobeItems();
-  }, []);
-
-  // Fetch Wardrobe Items from Supabase
-  const fetchWardrobeItems = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('wardrobe_items')
-        .select('*');
-
-      if (error) {
-        toast({
-          title: "Fetch Failed",
-          description: "Could not load wardrobe items.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      setWardrobe(data || []);
-    } catch (error) {
-      console.error('Fetching wardrobe items error:', error);
-    }
-  };
-
-  const handleStyleAssistantClick = () => {
-    window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
-  };
-
-  const handleAddItemClick = () => {
-    setIsAddingItem(true);
-    setActiveTab('all-items');
-    setSelectedSection(null);
-    window.scrollTo(0, 0);
-  };
-
-  const handleItemAdded = (newItem: WardrobeItem) => {
-    // Update wardrobe items state
-    setWardrobe(prevItems => [...prevItems, newItem]);
-  };
-
-  // Utility Functions
-  const getItemCountInSection = (sectionName: string) => {
-    return wardrobe.filter(item => item.location === sectionName).length;
-  };
-
-  const toggleFavorite = async (itemId: number) => {
-    const item = wardrobe.find(i => i.id === itemId);
-    if (!item) return;
-
-    const newTags = item.tags.includes('favorite')
-      ? item.tags.filter(tag => tag !== 'favorite')
-      : [...item.tags, 'favorite'];
-
-    try {
-      const { error } = await supabase
-        .from('wardrobe_items')
-        .update({ tags: newTags })
-        .eq('id', itemId);
-
-      if (error) {
-        toast({
-          title: "Update Failed",
-          description: "Could not update favorite status.",
-          variant: "destructive"
-        });
-        return;
-      }
-
-      // Update local state
-      setWardrobe(wardrobe.map(i => 
-        i.id === itemId ? { ...i, tags: newTags } : i
-      ));
-    } catch (error) {
-      console.error('Toggling favorite error:', error);
-    }
-  };
-
-  // Filtering Logic
-  const filteredItems = wardrobe.filter(item => {
-    let tabFilter = true;
-    
-    if (activeTab === 'favorites') {
-      tabFilter = item.tags?.includes('favorite') || false;
-        } else if (activeTab === 'all-items') {
-      tabFilter = selectedSection ? item.location === selectedSection.name : true;
-    } else {
-      tabFilter = item.category === activeTab;
-    }
-
-    const searchFilter = 
-    !searchQuery || 
-    (item.name ?? '').toLowerCase().includes((searchQuery ?? '').toLowerCase());
-
-    return tabFilter && searchFilter;
-  });
-
-  // Section Manager Component
-  const SectionManager = () => (
-    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
-      {sections.map((section) => (
-        <Card 
-          key={section.id}
-          className={`cursor-pointer hover:shadow-md transition-shadow
-            ${selectedSection?.id === section.id ? 'ring-2 ring-blue-500' : ''}`}
-          onClick={() => setSelectedSection(selectedSection?.id === section.id ? null : section)}
-        >
-          <CardContent className="p-4">
-            <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">{section.name}</h3>
-              <div className="flex gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0"
-                >
-                  <Edit2 className="h-3 w-3" />
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0 text-red-500"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
-              </div>
-            </div>
-            <p className="text-xs text-gray-500">
-              {getItemCountInSection(section.name) === 0 
-                ? 'Empty' 
-                : `${getItemCountInSection(section.name)} ${
-                    getItemCountInSection(section.name) === 1 ? 'item' : 'items'
-                  }`
-              }
-            </p>
-          </CardContent>
-        </Card>
-      ))}
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between h-16 items-center">
-            <h1 
-              className="text-xl font-bold cursor-pointer" 
-              onClick={() => {
-                setActiveTab('all-items');
-                setSelectedSection(null);
-              }}
+return (
+  <div className="min-h-screen bg-gray-50">
+    {/* Header */}
+    <div className="bg-white border-b">
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="flex justify-between h-16 items-center">
+          <h1 
+            className="text-xl font-bold cursor-pointer" 
+            onClick={() => {
+              setActiveTab('all-items');
+              setSelectedSection(null);
+            }}
+          >
+            Smart Wardrobe
+          </h1>
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleStyleAssistantClick}
             >
-              Smart Wardrobe
-            </h1>
-            <div className="flex items-center gap-4">
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Style Assistant
+            </Button>
+            
+            <AddItemDialog 
+              sections={sections} 
+              onItemAdded={handleItemAdded} 
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div className="bg-white border-b">
+      <div className="max-w-7xl mx-auto px-4 py-4">
+        <div className="mb-4 relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Input
+              type="text"
+              placeholder="Search items..."
+              className="pl-10"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={handleStyleAssistantClick}
+                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                onClick={() => setSearchQuery('')}
               >
-                <MessageCircle className="h-5 w-5 mr-2" />
-                Style Assistant
+                <X className="h-4 w-4" />
               </Button>
-              
-              {/* Replace previous Add Item button with new Dialog Trigger */}
-              <AddItemDialog 
-                sections={sections} 
-                onItemAdded={handleItemAdded} 
-              />
-            </div>
+            )}
           </div>
         </div>
-      </div>
-  
-      <div className="bg-white border-b">
-        <div className="max-w-7xl mx-auto px-4 py-4">
-          <div className="mb-4 relative">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <Input
-                type="text"
-                placeholder="Search items..."
-                className="pl-10"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
-                  onClick={() => setSearchQuery('')}
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              )}
-            </div>
-          </div>
-  
-          <div className="flex space-x-4 overflow-x-auto pb-2">
-            {categories.map(category => (
-              <Button
-                key={category.id}
-                variant={activeTab === category.id ? "default" : "ghost"}
-                className={`rounded-full transition-colors duration-200 
-                  ${activeTab === category.id 
-                    ? 'bg-gray-900 text-white hover:bg-gray-800' 
-                    : 'hover:bg-gray-100'}`}
-                onClick={() => {
-                  setActiveTab(category.id);
-                  setSelectedSection(null);
-                }}
-              >
-                {category.name}
-              </Button>
-            ))}
-          </div>
-        </div>
-      </div>
-  
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        
-        {activeTab === 'all-items' && !isAddingItem && <SectionManager />}
-  
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {filteredItems.map(item => (
-            <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-              <div className="relative">
-                <img 
-                  src={item.imageUrl} 
-                  alt={item.name}
-                  className="w-full h-48 object-cover"
-                />
-                <Button
-                  variant="secondary"
-                  size="icon"
-                  className={`absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 
-                    hover:bg-white/90 transition-colors`}
-                  onClick={() => toggleFavorite(item.id)}
-                >
-                  <Heart 
-                    className={`h-4 w-4 ${
-                      item.tags.includes('favorite') 
-                        ? 'fill-gray-900 text-gray-900' 
-                        : 'text-gray-500'
-                    }`} 
-                  />
-                </Button>
-              </div>
-              <CardContent className="p-4">
-                <h3 className="font-medium mb-2">{item.name}</h3>
-                <p className="text-sm text-gray-500 mb-2">
-                  Location: {item.location}
-                </p>
-              </CardContent>
-            </Card>
+
+        <div className="flex space-x-4 overflow-x-auto pb-2">
+          {categories.map(category => (
+            <Button
+              key={category.id}
+              variant={activeTab === category.id ? "default" : "ghost"}
+              className={`rounded-full transition-colors duration-200 
+                ${activeTab === category.id 
+                  ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                  : 'hover:bg-gray-100'}`}
+              onClick={() => {
+                setActiveTab(category.id);
+                setSelectedSection(null);
+              }}
+            >
+              {category.name}
+            </Button>
           ))}
         </div>
       </div>
-      <Toaster />
     </div>
-  );
+
+    <div className="max-w-7xl mx-auto px-4 py-8">
+      
+      {activeTab === 'all-items' && !isAddingItem && <SectionManager />}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+        {filteredItems.map(item => (
+          <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
+            <div className="relative">
+              <img 
+                src={item.imageUrl} 
+                alt={item.name}
+                className="w-full h-48 object-cover"
+              />
+              <Button
+                variant="secondary"
+                size="icon"
+                className={`absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 
+                  hover:bg-white/90 transition-colors`}
+                onClick={() => toggleFavorite(item.id)}
+              >
+                <Heart 
+                  className={`h-4 w-4 ${
+                    item.tags.includes('favorite') 
+                      ? 'fill-gray-900 text-gray-900' 
+                      : 'text-gray-500'
+                  }`} 
+                />
+              </Button>
+            </div>
+            <CardContent className="p-4">
+              <h3 className="font-medium mb-2">{item.name}</h3>
+              <p className="text-sm text-gray-500 mb-2">
+                Location: {item.location}
+              </p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    </div>
+    <Toaster />
+  </div>
+);
 };
 
 export default SmartWardrobe;
