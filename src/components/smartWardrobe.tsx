@@ -51,17 +51,20 @@ interface WardrobeItem {
 }
 
 const SmartWardrobe = () => {
-  // Sections State
+  // Existing states...
   const [sections, setSections] = useState<Section[]>([]);
-
-  // Wardrobe State
   const [wardrobe, setWardrobe] = useState<WardrobeItem[]>([]);
-
-  // UI States
   const [activeTab, setActiveTab] = useState('all-items');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
   const [isAddingItem, setIsAddingItem] = useState(false);
+  const [editingItem, setEditingItem] = useState<WardrobeItem | null>(null);
+  const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
+  
+  // New state for section management
+  const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
+  const [deletingSectionId, setDeletingSectionId] = useState<number | null>(null);
+  const [editSectionName, setEditSectionName] = useState('');
   const [categories, setCategories] = useState([
     { id: 'all-items', name: 'All Items' },
     { id: 'favorites', name: 'Favorites' },
@@ -83,8 +86,9 @@ const SmartWardrobe = () => {
     try {
       const { data, error } = await supabase
         .from('sections')
-        .select('*');
-
+        .select('*')
+        .order('name', { ascending: true }); // Order sections by name in ascending order
+  
       if (error) {
         toast({
           title: "Fetch Failed",
@@ -93,7 +97,7 @@ const SmartWardrobe = () => {
         });
         return;
       }
-
+  
       setSections(data || []);
     } catch (error) {
       console.error('Fetching sections error:', error);
@@ -194,6 +198,110 @@ const SmartWardrobe = () => {
     return tabFilter && searchFilter;
   });
 
+    // Edit Section Function
+    const handleEditSection = async () => {
+      if (!editingSectionId || !editSectionName.trim()) {
+        toast({
+          title: "Invalid Input",
+          description: "Section name cannot be empty.",
+          variant: "destructive"
+        });
+        return;
+      }
+  
+      try {
+        const { error } = await supabase
+          .from('sections')
+          .update({ name: editSectionName })
+          .eq('id', editingSectionId);
+  
+        if (error) throw error;
+  
+        // Update local state
+        setSections(sections.map(section => 
+          section.id === editingSectionId 
+            ? { ...section, name: editSectionName } 
+            : section
+        ));
+  
+        // Update wardrobe items with new section name
+        const { error: itemUpdateError } = await supabase
+          .from('wardrobe_items')
+          .update({ location: editSectionName })
+          .eq('location', sections.find(s => s.id === editingSectionId)?.name || '');
+  
+        if (itemUpdateError) throw itemUpdateError;
+  
+        // Reset edit state
+        setEditingSectionId(null);
+        setEditSectionName('');
+  
+        toast({
+          title: "Section Updated",
+          description: "Section has been successfully updated.",
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Edit section error:', error);
+        toast({
+          title: "Update Failed",
+          description: "Could not update section.",
+          variant: "destructive"
+        });
+      }
+    };
+  
+    // Delete Section Function
+    const handleDeleteSection = async () => {
+      if (!deletingSectionId) return;
+  
+      try {
+        // First, check if section has any items
+        const { count, error: countError } = await supabase
+          .from('wardrobe_items')
+          .select('*', { count: 'exact' })
+          .eq('location', sections.find(s => s.id === deletingSectionId)?.name || '');
+  
+        if (countError) throw countError;
+  
+        if (count && count > 0) {
+          toast({
+            title: "Delete Failed",
+            description: "Cannot delete a section with items. Move items first.",
+            variant: "destructive"
+          });
+          return;
+        }
+  
+        // Delete the section
+        const { error } = await supabase
+          .from('sections')
+          .delete()
+          .eq('id', deletingSectionId);
+  
+        if (error) throw error;
+  
+        // Update local state
+        setSections(sections.filter(section => section.id !== deletingSectionId));
+  
+        // Reset delete state
+        setDeletingSectionId(null);
+  
+        toast({
+          title: "Section Deleted",
+          description: "Section has been successfully deleted.",
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Delete section error:', error);
+        toast({
+          title: "Delete Failed",
+          description: "Could not delete section.",
+          variant: "destructive"
+        });
+      }
+    };
+
   // Section Manager Component
   const SectionManager = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
@@ -206,22 +314,82 @@ const SmartWardrobe = () => {
         >
           <CardContent className="p-4">
             <div className="flex justify-between items-center mb-2">
-              <h3 className="font-medium">{section.name}</h3>
+              {editingSectionId === section.id ? (
+                <Input
+                  value={editSectionName}
+                  onChange={(e) => setEditSectionName(e.target.value)}
+                  onBlur={handleEditSection}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleEditSection();
+                    if (e.key === 'Escape') {
+                      setEditingSectionId(null);
+                      setEditSectionName('');
+                    }
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <h3 className="font-medium">{section.name}</h3>
+              )}
               <div className="flex gap-1">
                 <Button 
                   variant="ghost" 
                   size="sm" 
                   className="h-6 w-6 p-0"
+                  onClick={(e) => {
+                    e.stopPropagation(); // Prevent card selection
+                    setEditingSectionId(section.id);
+                    setEditSectionName(section.name);
+                  }}
                 >
                   <Edit2 className="h-3 w-3" />
                 </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-6 w-6 p-0 text-red-500"
+                <Dialog 
+                  open={deletingSectionId === section.id}
+                  onOpenChange={(open) => {
+                    if (!open) setDeletingSectionId(null);
+                  }}
                 >
-                  <Trash2 className="h-3 w-3" />
-                </Button>
+                  <DialogTrigger asChild>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-6 w-6 p-0 text-red-500"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent card selection
+                        setDeletingSectionId(section.id);
+                      }}
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Delete Section</DialogTitle>
+                      <DialogDescription>
+                        Are you sure you want to delete the section "{section.name}"? 
+                        This action cannot be undone. The section must be empty to delete.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setDeletingSectionId(null)}
+                      >
+                        Cancel
+                      </Button>
+                      <Button 
+                        variant="destructive" 
+                        onClick={() => {
+                          handleDeleteSection();
+                          setDeletingSectionId(null);
+                        }}
+                      >
+                        Delete
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
             <p className="text-xs text-gray-500">
@@ -238,16 +406,54 @@ const SmartWardrobe = () => {
     </div>
   );
 
-const AddItemDialog: React.FC<{ 
-  sections: Section[]; 
-  onItemAdded: (item: WardrobeItem) => void 
-}> = ({ sections, onItemAdded }) => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [itemName, setItemName] = useState('');
-  const [location, setLocation] = useState('');
-  const [imageFile, setImageFile] = useState<File | null>(null);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  // Delete Wardrobe Item Function
+  const handleDeleteItem = async () => {
+    if (!deletingItemId) return;
+
+    try {
+      // Delete from Supabase
+      const { error } = await supabase
+        .from('wardrobe_items')
+        .delete()
+        .eq('id', deletingItemId);
+
+      if (error) throw error;
+
+      // Update local state
+      setWardrobe(wardrobe.filter(item => item.id !== deletingItemId));
+
+      // Reset deleting state
+      setDeletingItemId(null);
+
+      // Show success toast
+      toast({
+        title: "Item Deleted",
+        description: "Your wardrobe item has been successfully deleted.",
+        duration: 3000
+      });
+    } catch (error) {
+      console.error('Delete item error:', error);
+      toast({
+        title: "Delete Failed",
+        description: "Could not delete item. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
+  const AddItemDialog: React.FC<{ 
+    sections: Section[]; 
+    onItemAdded: (item: WardrobeItem) => void,
+    initialItem?: WardrobeItem | null
+  }> = ({ sections, onItemAdded, initialItem }) => {
+    const [isDialogOpen, setIsDialogOpen] = useState(!!initialItem);
+    const [itemName, setItemName] = useState(initialItem?.name || '');
+    const [location, setLocation] = useState(initialItem?.location || '');
+    const [imageFile, setImageFile] = useState<File | null>(null);
+    const [imagePreview, setImagePreview] = useState<string | null>(
+      initialItem?.imageUrl || null
+    );
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Handle image upload
   const handleImageUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -328,71 +534,109 @@ const AddItemDialog: React.FC<{
     e.preventDefault();
 
     // Validate form
-    if (!itemName || !location || !imageFile) {
+    if (!itemName || !location) {
       toast({
         title: "Incomplete Form",
-        description: "Please fill in all fields and upload an image.",
+        description: "Please fill in all fields.",
         variant: "destructive"
       });
       return;
     }
 
     try {
-      // Upload image
-      const imageUrl = await uploadImageToStorage();
-      
-      if (!imageUrl) {
-        return; // Image upload failed
+      let imageUrl = initialItem?.imageUrl;
+
+      // Upload new image if selected
+      if (imageFile) {
+        const newImageUrl = await uploadImageToStorage();
+        if (!newImageUrl) {
+          return; // Image upload failed
+        }
+        imageUrl = newImageUrl;
       }
 
       // Prepare item data
-      const newItem: WardrobeItem = {
+      const itemData: Partial<WardrobeItem> = {
         name: itemName,
         location: location,
-        imageUrl: imageUrl,
-        category: 'all-items',
-        tags: [] as string[]
+        imageUrl: imageUrl || '',
       };
 
-      // Insert into Supabase
-      const { data, error } = await supabase
-        .from('wardrobe_items')
-        .insert([newItem])
-        .select();
+      if (initialItem) {
+        // Update existing item
+        const { data, error } = await supabase
+          .from('wardrobe_items')
+          .update(itemData)
+          .eq('id', initialItem.id)
+          .select();
 
-      if (error) {
-        throw error;
+        if (error) {
+          throw error;
+        }
+
+        // Update local state
+        setWardrobe(wardrobe.map(item => 
+          item.id === initialItem.id ? { ...item, ...itemData } : item
+        ));
+
+        // Show success toast
+        toast({
+          title: "Item Updated",
+          description: "Your wardrobe item has been successfully updated.",
+          duration: 3000
+        });
+      } else {
+        // Add new item
+        const { data, error } = await supabase
+          .from('wardrobe_items')
+          .insert([{
+            ...itemData,
+            category: 'all-items',
+            tags: [] as string[]
+          }])
+          .select();
+
+        if (error) {
+          throw error;
+        }
+
+        // Notify parent component
+        onItemAdded(data[0]);
+
+        // Show success toast
+        toast({
+          title: "Item Added",
+          description: "Your wardrobe item has been successfully added.",
+          duration: 3000
+        });
       }
-
-      // Use the returned ID from Supabase
-      const insertedItem = data[0];
-
-      // Notify parent component
-      onItemAdded(insertedItem);
 
       // Reset form and close dialog
       resetForm();
       setIsDialogOpen(false);
-
-      // Show success toast
-      toast({
-        title: "Item Added",
-        description: "Your wardrobe item has been successfully added.",
-        duration: 3000
-      });
+      setEditingItem(null);
 
     } catch (error) {
-      console.error('Add item error:', error);
+      console.error('Add/Edit item error:', error);
       toast({
-        title: "Add Item Failed",
-        description: "Could not add item to wardrobe. Please try again.",
+        title: initialItem ? "Update Failed" : "Add Item Failed",
+        description: "Could not process your item. Please try again.",
         variant: "destructive"
       });
     }
   };
 
   return (
-    <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+    <Dialog 
+        open={isDialogOpen} 
+        onOpenChange={(open) => {
+          setIsDialogOpen(open);
+          if (!open) {
+            resetForm();
+            setEditingItem(null);
+          }
+        }}
+      >
       <DialogTrigger asChild>
         <Button 
           variant="default" 
@@ -606,43 +850,102 @@ return (
     </div>
 
     <div className="max-w-7xl mx-auto px-4 py-8">
-      
-      {activeTab === 'all-items' && !isAddingItem && <SectionManager />}
+        {activeTab === 'all-items' && !isAddingItem && <SectionManager />}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredItems.map(item => (
-          <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow">
-            <div className="relative">
-              <img 
-                src={item.imageUrl} 
-                alt={item.name}
-                className="w-full h-48 object-cover"
-              />
-              <Button
-                variant="secondary"
-                size="icon"
-                className={`absolute top-2 right-2 h-8 w-8 rounded-full bg-white/80 
-                  hover:bg-white/90 transition-colors`}
-                onClick={() => toggleFavorite(item.id)}
-              >
-                <Heart 
-                  className={`h-4 w-4 ${
-                    item.tags.includes('favorite') 
-                      ? 'fill-gray-900 text-gray-900' 
-                      : 'text-gray-500'
-                  }`} 
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {filteredItems.map(item => (
+            <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow relative">
+              <div className="relative">
+                <img 
+                  src={item.imageUrl} 
+                  alt={item.name}
+                  className="w-full h-48 object-cover"
                 />
-              </Button>
-            </div>
-            <CardContent className="p-4">
-              <h3 className="font-medium mb-2">{item.name}</h3>
-              <p className="text-sm text-gray-500 mb-2">
-                Location: {item.location}
-              </p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+                <div className="absolute top-2 right-2 flex gap-2">
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-white/80 hover:bg-white/90"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingItem(item);
+                    }}
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-700" />
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="icon"
+                    className={`h-8 w-8 rounded-full bg-white/80 
+                      hover:bg-white/90 transition-colors`}
+                    onClick={() => toggleFavorite(item.id)}
+                  >
+                    <Heart 
+                      className={`h-4 w-4 ${
+                        item.tags.includes('favorite') 
+                          ? 'fill-gray-900 text-gray-900' 
+                          : 'text-gray-500'
+                      }`} 
+                    />
+                  </Button>
+                </div>
+              </div>
+              <CardContent className="p-4">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="font-medium">{item.name}</h3>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 w-6 p-0 text-red-500"
+                    onClick={() => setDeletingItemId(item.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
+                </div>
+                <p className="text-sm text-gray-500">
+                  Location: {item.location}
+                </p>
+              </CardContent>
+            </Card>
+      ))}
+    </div>
+
+    {/* Add Dialogs for Edit and Delete Confirmations */}
+    {editingItem && (
+      <AddItemDialog 
+        sections={sections} 
+        onItemAdded={handleItemAdded}
+        initialItem={editingItem}
+      />
+    )}
+
+    <Dialog 
+      open={deletingItemId !== null}
+      onOpenChange={() => setDeletingItemId(null)}
+    >
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Delete Wardrobe Item</DialogTitle>
+          <DialogDescription>
+            Are you sure you want to delete this item? This action cannot be undone.
+          </DialogDescription>
+        </DialogHeader>
+        <DialogFooter>
+          <Button 
+            variant="outline" 
+            onClick={() => setDeletingItemId(null)}
+          >
+            Cancel
+          </Button>
+          <Button 
+            variant="destructive" 
+            onClick={handleDeleteItem}
+          >
+            Delete
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
     </div>
     <Toaster />
   </div>
