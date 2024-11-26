@@ -103,29 +103,23 @@ const AddItemDialog: React.FC<{
   // Upload image to Supabase storage
   const uploadImageToStorage = async (): Promise<string | null> => {
     if (!imageFile) return null;
-
+  
     try {
       const fileExt = imageFile.name.split('.').pop();
       const fileName = `${Date.now()}.${fileExt}`;
-      const filePath = `wardrobe-items/${fileName}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from('wardrobe-images')
+      const filePath = `${fileName}`;
+  
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('wardrobeImages')
         .upload(filePath, imageFile);
-
+  
       if (uploadError) {
         throw uploadError;
       }
-
-      // Get public URL
-      const { data: { publicUrl }, error: urlError } = supabase.storage
-        .from('wardrobe-images')
-        .getPublicUrl(filePath);
-
-      if (urlError) {
-        throw urlError;
-      }
-
+  
+      // Manually construct the public URL
+      const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/wardrobeImages/${filePath}`;
+  
       return publicUrl;
     } catch (error) {
       console.error('Image upload error:', error);
