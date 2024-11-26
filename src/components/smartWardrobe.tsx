@@ -81,6 +81,8 @@ const SmartWardrobe = () => {
   const [editingSectionId, setEditingSectionId] = useState<number | null>(null);
   const [deletingSectionId, setDeletingSectionId] = useState<number | null>(null);
   const [editSectionName, setEditSectionName] = useState('');
+  const [isAddingSectionMode, setIsAddingSectionMode] = useState(false);
+  const [newSectionName, setNewSectionName] = useState('');
   const [categories, setCategories] = useState([
     { id: 'all-items', name: 'All Items' },
     { id: 'favorites', name: 'Favorites' },
@@ -318,9 +320,121 @@ const SmartWardrobe = () => {
       }
     };
 
+    const handleAddSection = async () => {
+      // Validate section name
+      if (!newSectionName.trim()) {
+        toast({
+          title: "Invalid Input",
+          description: "Section name cannot be empty.",
+          variant: "destructive"
+        });
+        return;
+      }
+  
+      // Check if section name already exists
+      const sectionExists = sections.some(
+        section => section.name.toLowerCase() === newSectionName.trim().toLowerCase()
+      );
+  
+      if (sectionExists) {
+        toast({
+          title: "Duplicate Section",
+          description: "A section with this name already exists.",
+          variant: "destructive"
+        });
+        return;
+      }
+  
+      try {
+        // Insert new section to Supabase
+        const { data, error } = await supabase
+          .from('sections')
+          .insert([{ name: newSectionName.trim() }])
+          .select();
+  
+        if (error) throw error;
+  
+        // Update local state
+        setSections([...sections, data[0]]);
+  
+        // Reset add section mode and input
+        setIsAddingSectionMode(false);
+        setNewSectionName('');
+  
+        // Show success toast
+        toast({
+          title: "Section Added",
+          description: "Your new section has been successfully created.",
+          duration: 3000
+        });
+      } catch (error) {
+        console.error('Add section error:', error);
+        toast({
+          title: "Add Section Failed",
+          description: "Could not add new section. Please try again.",
+          variant: "destructive"
+        });
+      }
+    };
+  
+
   // Section Manager Component
   const SectionManager = () => (
     <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+      {/* Add Section Card */}
+      <Card 
+        className="cursor-pointer hover:shadow-md transition-shadow border-dashed border-2 border-gray-300 hover:border-gray-400"
+        onClick={() => setIsAddingSectionMode(true)}
+      >
+        <CardContent className="p-4 flex flex-col items-center justify-center h-full">
+          {isAddingSectionMode ? (
+            <div className="w-full space-y-2">
+              <Input 
+                placeholder="Enter section name"
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleAddSection();
+                  if (e.key === 'Escape') {
+                    setIsAddingSectionMode(false);
+                    setNewSectionName('');
+                  }
+                }}
+                autoFocus
+                className="w-full"
+              />
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    setIsAddingSectionMode(false);
+                    setNewSectionName('');
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  onClick={handleAddSection}
+                >
+                  Add
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center">
+              <Plus className="h-12 w-12 text-gray-400 mb-2" />
+              <p className="text-gray-600 text-sm text-center">
+                Add New Section
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Existing Sections */}
       {sections.map((section) => (
         <Card 
           key={section.id}
