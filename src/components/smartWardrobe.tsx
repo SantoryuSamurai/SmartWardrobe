@@ -10,7 +10,8 @@ import {
   Search, 
   Edit2, 
   Trash2, 
-  Heart 
+  Heart,
+  Plus 
 } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -34,6 +35,21 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from "@/components/ui/badge";
 import { Toaster } from '@/components/ui/toaster';
 import { toast } from "@/components/ui/use-toast";
+
+interface Section {
+  id: number;
+  name: string;
+  items?: number[];
+}
+
+interface WardrobeItem {
+  id: number;
+  name: string;
+  location: string;
+  imageUrl: string;
+  category: string;
+  tags: string[];
+}
 
 interface Section {
   id: number;
@@ -893,14 +909,14 @@ return (
               <CardContent className="p-4">
                 <div className="flex justify-between items-center mb-2">
                   <h3 className="font-medium">{item.name}</h3>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className="h-6 w-6 p-0 text-red-500"
-                    onClick={() => setDeletingItemId(item.id)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
+                  <Button
+                      variant="secondary"
+                      size="icon"
+                      className="h-8 w-8 rounded-full bg-white/80 hover:bg-white/90 text-red-500"
+                      onClick={() => setDeletingItemId(item.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                 </Button>
                 </div>
                 <p className="text-sm text-gray-500">
                   Location: {item.location}
