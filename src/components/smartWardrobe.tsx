@@ -68,7 +68,7 @@ const SmartWardrobe = () => {
   const [editSectionName, setEditSectionName] = useState('');
   const [isAddingSectionMode, setIsAddingSectionMode] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
-  const [categories, setCategories] = useState([
+  const [categories] = useState([
     { 
       id: 'all-items', 
       name: 'All Items', 
@@ -140,12 +140,12 @@ const SmartWardrobe = () => {
     window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
   };
 
-  const handleAddItemClick = () => {
-    setIsAddingItem(true);
-    setActiveTab('all-items');
-    setSelectedSection(null);
-    window.scrollTo(0, 0);
-  };
+  // const handleAddItemClick = () => {
+  //   setIsAddingItem(true);
+  //   setActiveTab('all-items');
+  //   setSelectedSection(null);
+  //   window.scrollTo(0, 0);
+  // };
 
   const handleItemAdded = (newItem: WardrobeItem) => {
     // Update wardrobe items state
@@ -489,7 +489,7 @@ const SmartWardrobe = () => {
                     <DialogHeader>
                       <DialogTitle>Delete Section</DialogTitle>
                       <DialogDescription>
-                        Are you sure you want to delete the section "{section.name}"? 
+                        Are you sure you want to delete the section {section.name}? 
                         This action cannot be undone. The section must be empty to delete.
                       </DialogDescription>
                     </DialogHeader>
@@ -617,7 +617,7 @@ const SmartWardrobe = () => {
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
   
-      const { data: uploadData, error: uploadError } = await supabase.storage
+      const { error: uploadError } = await supabase.storage
         .from('wardrobeImages')
         .upload(filePath, imageFile);
   
@@ -686,7 +686,7 @@ const SmartWardrobe = () => {
 
       if (initialItem) {
         // Update existing item
-        const { data, error } = await supabase
+        const {error } = await supabase
           .from('wardrobe_items')
           .update(itemData)
           .eq('id', initialItem.id)
