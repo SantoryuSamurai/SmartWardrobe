@@ -917,7 +917,7 @@ return (
               setSelectedSection(null);
             }}
           >
-            SmartWardrobe
+            Smart Wardrobe
           </h1>
           <div className="flex items-center gap-4">
             <Button
@@ -964,26 +964,22 @@ return (
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-2">
-          {categories.map(category => {
-            const IconComponent = category.icon;
-            return (
-              <Button
-                key={category.id}
-                variant={activeTab === category.id ? "default" : "ghost"}
-                className={`rounded-full transition-colors duration-200 flex items-center gap-2
-                  ${activeTab === category.id 
-                    ? 'bg-gray-900 text-white hover:bg-gray-800' 
-                    : 'hover:bg-gray-100'}`}
-                onClick={() => {
-                  setActiveTab(category.id);
-                  setSelectedSection(null);
-                }}
-              >
-                <IconComponent className="h-4 w-4" />
-                {category.name}
-              </Button>
-            );
-          })}
+          {categories.map(category => (
+            <Button
+              key={category.id}
+              variant={activeTab === category.id ? "default" : "ghost"}
+              className={`rounded-full transition-colors duration-200 
+                ${activeTab === category.id 
+                  ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                  : 'hover:bg-gray-100'}`}
+              onClick={() => {
+                setActiveTab(category.id);
+                setSelectedSection(null);
+              }}
+            >
+              {category.name}
+            </Button>
+          ))}
         </div>
       </div>
     </div>
