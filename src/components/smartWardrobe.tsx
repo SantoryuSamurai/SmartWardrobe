@@ -58,7 +58,7 @@ const SmartWardrobe = () => {
   const [activeTab, setActiveTab] = useState('all-items');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-  const [isAddingItem] = useState(false);
+  const [isAddingItem, setIsAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<WardrobeItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   
@@ -68,7 +68,7 @@ const SmartWardrobe = () => {
   const [editSectionName, setEditSectionName] = useState('');
   const [isAddingSectionMode, setIsAddingSectionMode] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
-  const [categories] = useState([
+  const [categories, setCategories] = useState([
     { 
       id: 'all-items', 
       name: 'All Items', 
@@ -140,12 +140,12 @@ const SmartWardrobe = () => {
     window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
   };
 
-  // const handleAddItemClick = () => {
-  //   setIsAddingItem(true);
-  //   setActiveTab('all-items');
-  //   setSelectedSection(null);
-  //   window.scrollTo(0, 0);
-  // };
+  const handleAddItemClick = () => {
+    setIsAddingItem(true);
+    setActiveTab('all-items');
+    setSelectedSection(null);
+    window.scrollTo(0, 0);
+  };
 
   const handleItemAdded = (newItem: WardrobeItem) => {
     // Update wardrobe items state
@@ -489,7 +489,7 @@ const SmartWardrobe = () => {
                     <DialogHeader>
                       <DialogTitle>Delete Section</DialogTitle>
                       <DialogDescription>
-                        Are you sure you want to delete the section {section.name}? 
+                        Are you sure you want to delete the section "{section.name}"? 
                         This action cannot be undone. The section must be empty to delete.
                       </DialogDescription>
                     </DialogHeader>
@@ -617,7 +617,7 @@ const SmartWardrobe = () => {
       const fileName = `${Date.now()}.${fileExt}`;
       const filePath = `${fileName}`;
   
-      const {  error: uploadError } = await supabase.storage
+      const { data: uploadData, error: uploadError } = await supabase.storage
         .from('wardrobeImages')
         .upload(filePath, imageFile);
   
@@ -686,7 +686,7 @@ const SmartWardrobe = () => {
 
       if (initialItem) {
         // Update existing item
-        const {error } = await supabase
+        const { data, error } = await supabase
           .from('wardrobe_items')
           .update(itemData)
           .eq('id', initialItem.id)
@@ -917,7 +917,7 @@ return (
               setSelectedSection(null);
             }}
           >
-            Smart Wardrobe
+            SmartWardrobe
           </h1>
           <div className="flex items-center gap-4">
             <Button
@@ -964,22 +964,26 @@ return (
         </div>
 
         <div className="flex space-x-4 overflow-x-auto pb-2">
-          {categories.map(category => (
-            <Button
-              key={category.id}
-              variant={activeTab === category.id ? "default" : "ghost"}
-              className={`rounded-full transition-colors duration-200 
-                ${activeTab === category.id 
-                  ? 'bg-gray-900 text-white hover:bg-gray-800' 
-                  : 'hover:bg-gray-100'}`}
-              onClick={() => {
-                setActiveTab(category.id);
-                setSelectedSection(null);
-              }}
-            >
-              {category.name}
-            </Button>
-          ))}
+          {categories.map(category => {
+            const IconComponent = category.icon;
+            return (
+              <Button
+                key={category.id}
+                variant={activeTab === category.id ? "default" : "ghost"}
+                className={`rounded-full transition-colors duration-200 flex items-center gap-2
+                  ${activeTab === category.id 
+                    ? 'bg-gray-900 text-white hover:bg-gray-800' 
+                    : 'hover:bg-gray-100'}`}
+                onClick={() => {
+                  setActiveTab(category.id);
+                  setSelectedSection(null);
+                }}
+              >
+                <IconComponent className="h-4 w-4" />
+                {category.name}
+              </Button>
+            );
+          })}
         </div>
       </div>
     </div>
