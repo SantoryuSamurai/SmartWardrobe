@@ -32,7 +32,6 @@ import {
   DialogTrigger 
 } from "@/components/ui/dialog";
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from "@/components/ui/badge";
 import { Toaster } from '@/components/ui/toaster';
 import { toast } from "@/components/ui/use-toast";
 
@@ -742,29 +741,42 @@ const SmartWardrobe = () => {
 
   return (
     <Dialog 
-        open={isDialogOpen} 
-        onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            resetForm();
-            setEditingItem(null);
-          }
-        }}
-      >
+      open={isDialogOpen} 
+      onOpenChange={(open) => {
+        setIsDialogOpen(open);
+        if (!open) {
+          resetForm();
+          setEditingItem(null);
+        }
+      }}
+    >
       <DialogTrigger asChild>
         <Button 
           variant="default" 
           className="bg-gray-900 hover:bg-gray-800"
         >
-          <PlusCircle className="h-5 w-5 mr-2" />
-          Add Item
+          {initialItem ? (
+            <>
+              <Edit2 className="h-5 w-5 mr-2" />
+              Edit Item
+            </>
+          ) : (
+            <>
+              <PlusCircle className="h-5 w-5 mr-2" />
+              Add Item
+            </>
+          )}
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
-          <DialogTitle>Add New Wardrobe Item</DialogTitle>
+          <DialogTitle>
+            {initialItem ? 'Edit the Wardrobe Item' : 'Add New Wardrobe Item'}
+          </DialogTitle>
           <DialogDescription>
-            Fill in the details of your new wardrobe item.
+            {
+              'Fill in the details of your new wardrobe item.'
+            }
           </DialogDescription>
         </DialogHeader>
         
