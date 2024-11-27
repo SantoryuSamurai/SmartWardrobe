@@ -8,7 +8,7 @@ import type {
 } from "@/components/ui/toast"
 
 const TOAST_LIMIT = 1
-const TOAST_REMOVE_DELAY = 1000000
+// const TOAST_REMOVE_DELAY = 1000000
 
 type ToasterToast = ToastProps & {
   id: string
@@ -46,7 +46,7 @@ function genId() {
   return count.toString();
 }
 
-const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
+// const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>();
 
 export const reducer = (state: { toasts: ToasterToast[] }, action: Action): { toasts: ToasterToast[] } => {
   switch (action.type) {
