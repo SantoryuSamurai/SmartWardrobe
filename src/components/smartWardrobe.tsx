@@ -923,14 +923,14 @@ return (
             SmartWardrobe
           </h1>
           <div className="flex items-center gap-4">
-            <Button
+            {/* <Button
               variant="ghost"
               size="sm"
               onClick={handleStyleAssistantClick}
             >
               <MessageCircle className="h-5 w-5 mr-2" />
               Style Assistant
-            </Button>
+            </Button> */}
             
             <AddItemDialog 
               sections={sections} 
