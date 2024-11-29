@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from 'react';
+import Script from 'next/script';
+
 import supabase from "../config/supabaseClient"
 import { 
   PlusCircle, 
@@ -905,6 +907,7 @@ const SmartWardrobe = () => {
 };
 
 return (
+  <>
   <div className="min-h-screen bg-gray-50">
     {/* Header */}
     <div className="bg-white border-b">
@@ -1088,6 +1091,16 @@ return (
     </div>
     <Toaster />
   </div>
+  {/* Botpress Webchat Scripts */}
+  <Script
+        src="https://cdn.botpress.cloud/webchat/v2.2/inject.js"
+        strategy="afterInteractive"
+      />
+      <Script
+        src="https://files.bpcontent.cloud/2024/11/19/03/20241119030806-WXSOOSV3.js"
+        strategy="afterInteractive"
+      />
+  </>
 );
 };
 
