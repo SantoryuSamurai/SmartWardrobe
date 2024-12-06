@@ -2,13 +2,12 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import Script from 'next/script';
-
+import Image from 'next/image';
 import supabase from "../config/supabaseClient"
 import { 
   PlusCircle, 
   Upload, 
-  X, 
-  MessageCircle, 
+  X,  
   Search, 
   Edit2, 
   Trash2, 
@@ -138,16 +137,16 @@ const SmartWardrobe = () => {
     }
   };
 
-  const handleStyleAssistantClick = () => {
-    window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
-  };
+  // const handleStyleAssistantClick = () => {
+  //   window.open('https://cdn.botpress.cloud/webchat/v2.2/shareable.html?configUrl=https://files.bpcontent.cloud/2024/11/19/03/20241119030807-4TNHTARG.json', '_blank');
+  // };
 
-  const handleAddItemClick = () => {
-    setIsAddingItem(true);
-    setActiveTab('all-items');
-    setSelectedSection(null);
-    window.scrollTo(0, 0);
-  };
+  // const handleAddItemClick = () => {
+  //   setIsAddingItem(true);
+  //   setActiveTab('all-items');
+  //   setSelectedSection(null);
+  //   window.scrollTo(0, 0);
+  // };
 
   const handleItemAdded = (newItem: WardrobeItem) => {
     // Update wardrobe items state
@@ -491,7 +490,7 @@ const SmartWardrobe = () => {
                     <DialogHeader>
                       <DialogTitle>Delete Section</DialogTitle>
                       <DialogDescription>
-                        Are you sure you want to delete the section "{section.name}"? 
+                        Are you sure you want to delete the section {section.name}? 
                         This action cannot be undone. The section must be empty to delete.
                       </DialogDescription>
                     </DialogHeader>
@@ -809,10 +808,12 @@ const SmartWardrobe = () => {
                 />
                 {imagePreview ? (
                   <div className="relative">
-                    <img 
-                      src={imagePreview} 
-                      alt="Preview" 
-                      className="mx-auto max-h-64 object-cover rounded-lg"
+                    <Image 
+                          src={imagePreview} 
+                          alt="Preview" 
+                          width={256} 
+                          height={256} 
+                          className="mx-auto max-h-64 object-cover rounded-lg"
                     />
                     <Button
                       type="button"
@@ -998,11 +999,13 @@ return (
           {filteredItems.map(item => (
             <Card key={item.id} className="overflow-hidden hover:shadow-lg transition-shadow relative">
               <div className="relative">
-                <img 
+              <Image 
                   src={item.imageUrl} 
-                  alt={item.name}
+                  alt={item.name} 
+                  width={256} 
+                  height={192} 
                   className="w-full h-48 object-cover"
-                />
+              />
                 <div className="absolute top-2 right-2 flex gap-2">
                   <Button
                     variant="secondary"
