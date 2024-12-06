@@ -69,7 +69,7 @@ const SmartWardrobe = () => {
   const [editSectionName, setEditSectionName] = useState('');
   const [isAddingSectionMode, setIsAddingSectionMode] = useState(false);
   const [newSectionName, setNewSectionName] = useState('');
-  const [categories, setCategories] = useState([
+  const [categories] = useState([
     { 
       id: 'all-items', 
       name: 'All Items', 
@@ -625,6 +625,12 @@ const SmartWardrobe = () => {
       if (uploadError) {
         throw uploadError;
       }
+
+       // Log uploadData here
+    if (uploadData) {
+      console.log('Upload data:', uploadData);
+      // Perform additional logic with uploadData if necessary
+    }
   
       // Manually construct the public URL
       const publicUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/wardrobeImages/${filePath}`;
@@ -640,6 +646,7 @@ const SmartWardrobe = () => {
       return null;
     }
   };
+
 
   // Reset form
   const resetForm = () => {
@@ -692,6 +699,9 @@ const SmartWardrobe = () => {
           .update(itemData)
           .eq('id', initialItem.id)
           .select();
+
+           // Log the data
+          console.log('Update response data:', data);
 
         if (error) {
           throw error;
