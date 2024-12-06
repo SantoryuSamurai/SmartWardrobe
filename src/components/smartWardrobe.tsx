@@ -59,7 +59,7 @@ const SmartWardrobe = () => {
   const [activeTab, setActiveTab] = useState('all-items');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSection, setSelectedSection] = useState<Section | null>(null);
-  const [isAddingItem, setIsAddingItem] = useState(false);
+  const [isAddingItem] = useState(false);
   const [editingItem, setEditingItem] = useState<WardrobeItem | null>(null);
   const [deletingItemId, setDeletingItemId] = useState<number | null>(null);
   
